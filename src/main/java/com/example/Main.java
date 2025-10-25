@@ -1,75 +1,75 @@
 package com.example;
 
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
+import com.example.Algorithms.KruskalMST;
+import com.example.Algorithms.PrimMST;
+import com.example.Graph.Edge;
+import com.example.Graph.Graph;
+import com.example.Report.MSTResult;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import java.io.FileReader;
+import java.io.File;
 import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.List;
 
 public class Main {
     public static void main(String[] args) {
-        JSONParser parser = new JSONParser();
+        ObjectMapper mapper = new ObjectMapper();
 
         try {
-            JSONObject input = (JSONObject) parser.parse(new FileReader("input.json"));
-            JSONArray graphs = (JSONArray) input.get("graphs");
+            // Чтение входного JSON
+            JsonNode input = mapper.readTree(new File("input.json"));
+            ArrayNode graphs = (ArrayNode) input.get("graphs");
 
-            JSONObject outputRoot = new JSONObject();
-            JSONArray resultsArray = new JSONArray();
+            ObjectNode outputRoot = mapper.createObjectNode();
+            ArrayNode resultsArray = mapper.createArrayNode();
 
-            for (Object g : graphs) {
-                JSONObject graphObj = (JSONObject) g;
-                long id = (long) graphObj.get("id");
+            for (JsonNode g : graphs) {
+                long id = g.get("graph_id").asLong();
 
-                JSONArray nodeArray = (JSONArray) graphObj.get("nodes");
+                // Узлы
                 List<String> nodes = new ArrayList<>();
-                for (Object n : nodeArray)
-                    nodes.add((String) n);
-
-                JSONArray edgeArray = (JSONArray) graphObj.get("edges");
-                List<Edge> edges = new ArrayList<>();
-                for (Object e : edgeArray) {
-                    JSONObject edgeObj = (JSONObject) e;
-                    String from = (String) edgeObj.get("from");
-                    String to = (String) edgeObj.get("to");
-                    long weight = (long) edgeObj.get("weight");
-                    edges.add(new Edge(from, to, (int) weight));
+                for (JsonNode n : g.get("vertices")) {
+                    nodes.add(n.asText());
                 }
 
-                Graph graph = new Graph(nodes, edges);
+                // Рёбра
+                List<Edge> edges = new ArrayList<>();
+                for (JsonNode e : g.get("edges")) {
+                    String from = e.get("from").asText();
+                    String to = e.get("to").asText();
+                    int weight = e.get("weight").asInt();
+                    edges.add(new Edge(from, to, weight));
+                }
+
+                Graph graph = new Graph(id, nodes, edges);
 
                 MSTResult prim = PrimMST.run(graph);
                 MSTResult kruskal = KruskalMST.run(graph);
 
-                JSONObject graphResult = new JSONObject();
-
-                // Сначала graph_id
+                // Формируем JSON для одного графа
+                ObjectNode graphResult = mapper.createObjectNode();
                 graphResult.put("graph_id", id);
 
-                // Потом input_stats
-                JSONObject inputStats = new JSONObject();
+                ObjectNode inputStats = mapper.createObjectNode();
                 inputStats.put("vertices", graph.vertices.size());
                 inputStats.put("edges", graph.edges.size());
-                graphResult.put("input_stats", inputStats);
+                graphResult.set("input_stats", inputStats);
 
-                // Потом prim
-                JSONObject primJson = mstToJson("prim", prim);
-                graphResult.put("prim", primJson);
-
-                // В конце kruskal
-                JSONObject kruskalJson = mstToJson("kruskal", kruskal);
-                graphResult.put("kruskal", kruskalJson);
+                graphResult.set("prim", mstToJson(mapper, prim, id));
+                graphResult.set("kruskal", mstToJson(mapper, kruskal, id));
 
                 resultsArray.add(graphResult);
             }
 
-            outputRoot.put("results", resultsArray);
+            outputRoot.set("results", resultsArray);
 
+            // Сохраняем JSON красиво
             try (FileWriter file = new FileWriter("output.json")) {
-                file.write(outputRoot.toJSONString());
+                file.write(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(outputRoot));
                 file.flush();
                 System.out.println("JSON сохранён в output.json");
             }
@@ -79,19 +79,20 @@ public class Main {
         }
     }
 
-    private static JSONObject mstToJson(String algorithm, MSTResult result) {
-        JSONObject algoJson = new JSONObject();
+    private static ObjectNode mstToJson(ObjectMapper mapper, MSTResult result, long graphId) {
+        ObjectNode algoJson = mapper.createObjectNode();
 
-        JSONArray edgesArray = new JSONArray();
+        ArrayNode edgesArray = mapper.createArrayNode();
         for (Edge e : result.mstEdges) {
-            JSONObject edgeJson = new JSONObject();
+            ObjectNode edgeJson = mapper.createObjectNode();
             edgeJson.put("from", e.from);
             edgeJson.put("to", e.to);
             edgeJson.put("weight", e.weight);
             edgesArray.add(edgeJson);
         }
 
-        algoJson.put("mst_edges", edgesArray);
+        algoJson.put("graph_id", graphId);
+        algoJson.set("mst_edges", edgesArray);
         algoJson.put("total_cost", result.totalCost);
         algoJson.put("execution_time_ms", result.executionTimeMs);
         algoJson.put("operations_count", result.operationsCount);

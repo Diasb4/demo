@@ -1,4 +1,4 @@
-package com.example;
+package com.example.Algorithms;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -6,8 +6,15 @@ import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Set;
 
+import com.example.Graph.Edge;
+import com.example.Graph.Graph;
+import com.example.Report.MSTResult;
+
 public class PrimMST {
     public static MSTResult run(Graph graph) {
+        if (graph.vertices == null || graph.vertices.isEmpty()) {
+            return new MSTResult(new ArrayList<>(), 0, 0, 0);
+        }
         long start = System.currentTimeMillis();
         List<Edge> mstEdges = new ArrayList<>();
         Set<String> visited = new HashSet<>();

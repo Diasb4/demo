@@ -1,4 +1,4 @@
-package com.example;
+package com.example.Graph;
 
 import java.util.HashMap;
 import java.util.List;

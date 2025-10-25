@@ -1,11 +1,12 @@
-package com.example;
+package com.example.Report;
 
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import java.io.FileWriter;
 import java.util.List;
-import com.example.MSTResult;
-import com.example.Edge;
+
+import com.example.Graph.Edge;
+import com.example.Report.MSTResult;
 
 public class OutputBuilder {
 
