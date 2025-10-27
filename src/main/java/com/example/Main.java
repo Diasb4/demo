@@ -73,6 +73,35 @@ public class Main {
                 file.flush();
                 System.out.println("JSON сохранён в output.json");
             }
+            try (FileWriter csvWriter = new FileWriter("output.csv")) {
+                csvWriter.append("graph_id,algorithm,total_cost,execution_time_ms,operations_count,edges\n");
+
+                for (JsonNode resultNode : resultsArray) {
+                    long graphId = resultNode.get("graph_id").asLong();
+
+                    for (String algo : new String[] { "prim", "kruskal" }) {
+                        JsonNode algoNode = resultNode.get(algo);
+                        long totalCost = algoNode.get("total_cost").asLong();
+                        long time = algoNode.get("execution_time_ms").asLong();
+                        long ops = algoNode.get("operations_count").asLong();
+
+                        List<String> edgeList = new ArrayList<>();
+                        for (JsonNode edge : algoNode.get("mst_edges")) {
+                            String from = edge.get("from").asText();
+                            String to = edge.get("to").asText();
+                            int w = edge.get("weight").asInt();
+                            edgeList.add(from + "-" + to + ":" + w);
+                        }
+                        String edgesStr = String.join(";", edgeList);
+
+                        csvWriter.append(graphId + "," + algo + "," + totalCost + "," + time + "," + ops + ",\""
+                                + edgesStr + "\"\n");
+                    }
+                }
+
+                csvWriter.flush();
+                System.out.println("CSV сохранён в output.csv");
+            }
 
         } catch (Exception e) {
             e.printStackTrace();
